@@ -45,7 +45,7 @@ jobs:
         .\venv\Scripts\Activate
         $msiFile = Get-ChildItem -Path dist/out -Filter "Icon Extractor-*.msi"
         if ($msiFile) {
-          $newName = $msiFile.Name -replace 'Icon Extractor', 'icon_extractor"'
+          $newName = $msiFile.Name -replace 'Icon Extractor', 'icon_extractor'
           Rename-Item -Path $msiFile.FullName -NewName $newName
         }
       shell: pwsh
