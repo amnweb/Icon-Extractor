@@ -14,10 +14,12 @@ A desktop application that extracts icons from running Windows applications and 
 - Windows 10 & 11
 
 ## Installation
-Donwload the latest installer from the releases page
+Download the [latest](https://github.com/amnweb/icon-extractor/releases/latest) installer from the releases page
 
 ## Winget Installation
-Coming soon
+```
+winget install --id AmN.iex
+```
 
 ## Running from source
 1. Install Python 3.12 or later
