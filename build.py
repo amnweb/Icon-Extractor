@@ -52,7 +52,7 @@ executables = [
         shortcut_name="Icon Extractor",
         shortcut_dir="MyProgramMenu",
         copyright=f"Copyright (C) {datetime.datetime.now().year} AmN",
-        target_name="iex.exe",
+        target_name="iex64.exe",
     )
 ]
 
