@@ -37,7 +37,6 @@ jobs:
     - name: Build MSI
       run: |
         .\venv\Scripts\Activate
-        cd src
         python build.py bdist_msi
       shell: pwsh
 
@@ -111,8 +110,8 @@ jobs:
               ${{ steps.changelog.outputs.changes }}
         append_body: true
         files: |
-          src/dist/out/*.msi
-          src/dist/out/checksums.txt
+          dist/out/*.msi
+          dist/out/checksums.txt
         prerelease: false
         generate_release_notes: true
         draft: true
