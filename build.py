@@ -57,7 +57,7 @@ executables = [
 ]
 
 setup(
-    name="iex",
+    name="Icon Extractor",
     version=BUILD_VERSION,
     author="AmN",
     description="Icon Extractor for Windows",

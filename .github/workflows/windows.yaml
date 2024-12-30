@@ -40,6 +40,16 @@ jobs:
         python build.py bdist_msi
       shell: pwsh
 
+    - name: Rename MSI file
+      run: |
+        .\venv\Scripts\Activate
+        $msiFile = Get-ChildItem -Path dist/out -Filter "Icon Extractor-*.msi"
+        if ($msiFile) {
+          $newName = $msiFile.Name -replace 'Icon Extractor', 'iex'
+          Rename-Item -Path $msiFile.FullName -NewName $newName
+        }
+      shell: pwsh
+
     - name: Get App Info
       id: get_version
       run: |
