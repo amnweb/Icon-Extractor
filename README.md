@@ -18,7 +18,7 @@ Download the [latest](https://github.com/amnweb/icon-extractor/releases/latest) 
 
 ## Winget Installation
 ```
-winget install --id AmN.iex
+winget install --id AmN.IconExtractor
 ```
 
 ## Running from source
