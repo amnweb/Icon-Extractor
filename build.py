@@ -1,12 +1,12 @@
 from cx_Freeze import setup, Executable
 import datetime
-BUILD_VERSION = "1.0.0"
+BUILD_VERSION = "1.0.1"
 build_options = {
     "silent_level": 1,
     "silent": True,
     "excludes": ['PySide6','pydoc_data','email','tkinter','PySide2'],
     "build_exe": "dist",
-    "include_msvcr": False,
+    "include_msvcr": True,
     "optimize": 1,
     "include_files": [
             ("app/assets/icon.png","app/assets/icon.png"),
