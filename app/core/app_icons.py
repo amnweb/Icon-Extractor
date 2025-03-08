@@ -7,12 +7,14 @@ import re
 import logging
 import win32ui
 import win32con
+import ctypes
+import ctypes.wintypes
 from app.core.app_uwp import get_package
 import xml.etree.ElementTree as ET
 from pathlib import Path
 import win32gui
 from glob import glob
-from PIL import Image
+from PIL import Image, ImageFilter 
 DEBUG = False
 
 pil_logger = logging.getLogger('PIL')
@@ -20,85 +22,78 @@ pil_logger.setLevel(logging.INFO)
 
 TARGETSIZE_REGEX = re.compile(r'targetsize-([0-9]+)')
 
-def get_window_icon(hwnd, dpi):
-    """Fetch the icon of the window."""
+def get_window_icon(hwnd, smooth_level=0):
+    """Fetch the icon of the window at higher quality if possible."""
     try:
         hicon = win32gui.SendMessage(hwnd, win32con.WM_GETICON, win32con.ICON_BIG, 0)
         if hicon == 0:
-            # If big icon is not available, try to get the small icon
             hicon = win32gui.SendMessage(hwnd, win32con.WM_GETICON, win32con.ICON_SMALL, 0)
         if hicon == 0:
-            # If both small and big icons are not available, get the class icon
             if hasattr(win32gui, 'GetClassLongPtr'):
                 hicon = win32gui.GetClassLongPtr(hwnd, win32con.GCLP_HICON)
             else:
                 hicon = win32gui.GetClassLong(hwnd, win32con.GCL_HICON)
-
+        
         if hicon:
+            desired_size = 48 # Most of UWPs also return 48x48 icons
             hdc_handle = win32gui.GetDC(0)
             if not hdc_handle:
                 raise Exception("Failed to get DC handle")
             try:
                 hdc = win32ui.CreateDCFromHandle(hdc_handle)
                 hbmp = win32ui.CreateBitmap()
-                bitmap_size = int(32 * dpi)
-                hbmp.CreateCompatibleBitmap(hdc, bitmap_size, bitmap_size)
+                hbmp.CreateCompatibleBitmap(hdc, desired_size, desired_size)
                 memdc = hdc.CreateCompatibleDC()
-                # Select the bitmap into the memory device context
-                memdc.SelectObject(hbmp)   
-                try:            
-                    memdc.DrawIcon((0, 0), hicon)
-                except Exception:
+                memdc.SelectObject(hbmp)
+                
+                # Call DrawIconEx via ctypes
+                DrawIconEx = ctypes.windll.user32.DrawIconEx
+                DrawIconEx.argtypes = [
+                    ctypes.wintypes.HDC, ctypes.c_int, ctypes.c_int,
+                    ctypes.wintypes.HICON, ctypes.c_int, ctypes.c_int,
+                    ctypes.c_uint, ctypes.wintypes.HBRUSH, ctypes.c_uint
+                ]
+                DI_NORMAL = 0x0003
+                result = DrawIconEx(memdc.GetSafeHdc(), 0, 0, hicon,
+                                      desired_size, desired_size, 0, 0, DI_NORMAL)
+                if result == 0:
                     return None
- 
+                
                 bmpinfo = hbmp.GetInfo()
                 bmpstr = hbmp.GetBitmapBits(True)
- 
+                raw_data = bytes(bmpstr)
                 img = Image.frombuffer(
                     'RGBA',
                     (bmpinfo['bmWidth'], bmpinfo['bmHeight']),
-                    bmpstr, 'raw', 'BGRA', 0, 1
-                )
+                    raw_data, 'raw', 'BGRA', 0, 1
+                ).convert('RGBA')
+                if smooth_level == 1:
+                    img = img.filter(ImageFilter.SMOOTH)
+                elif smooth_level == 2:
+                    img = img.filter(ImageFilter.SMOOTH_MORE)
                 return img
             finally:
-                # Cleaning up resources
-                #logging.debug("Cleaning up")
                 try:
                     win32gui.DestroyIcon(hicon)
-                    #logging.debug("Destroyed hicon")
-                except Exception as e:
-                    #logging.debug(f"Error destroying hicon: {e}")
+                except Exception:
                     pass
                 try:
                     memdc.DeleteDC()
-                    #logging.debug("Deleted memory device context.")
-                except Exception as e:
-                    #logging.debug(f"Error deleting memory device context: {e}")
+                except Exception:
                     pass
                 try:
                     hdc.DeleteDC()
-                    #logging.debug("Deleted device context.")
-                except Exception as e:
-                    #logging.debug(f"Error deleting device context: {e}")
+                except Exception:
                     pass
                 try:
                     win32gui.DeleteObject(hbmp.GetHandle())
-                    #logging.debug("Deleted bitmap object.")
-                except Exception as e:
-                    #logging.debug(f"Error deleting bitmap object: {e}")
+                except Exception:
                     pass
                 try:
                     win32gui.ReleaseDC(0, hdc_handle)
-                    #logging.debug("Released device context handle.")
-                except Exception as e:
-                    #logging.debug(f"Error releasing device context handle: {e}")
-                    pass                
-    
+                except Exception:
+                    pass
         else:
-            import win32api
-            import ctypes
-            import ctypes.wintypes
-            import win32process
             try:
                 class_name = win32gui.GetClassName(hwnd)
             except:
@@ -129,7 +124,7 @@ def get_window_icon(hwnd, dpi):
             manifest_path = os.path.join(package.package_path, "AppXManifest.xml")
             if not os.path.exists(manifest_path):
                 if DEBUG:
-                    print(f"manifest not found {manifest_path}")
+                    logging.error(f"manifest not found {manifest_path}")
                 return None
             root = ET.parse(manifest_path)
             velement = root.find(".//VisualElements")
@@ -190,6 +185,5 @@ def get_window_icon(hwnd, dpi):
                 return None
             return img
     except Exception as e:
-        logging.exception("")
-        print(f"Error fetching icon: {e}")
+        logging.error(f"Error fetching icon: {e}")
         return None

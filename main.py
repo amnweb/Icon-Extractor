@@ -84,11 +84,11 @@ def get_active_window_process():
 
 def main():
     app = QtWidgets.QApplication([])
+    app.setStyle("Fusion")
     window = QtWidgets.QWidget()
     window.setWindowFlags(window.windowFlags() | QtCore.Qt.WindowType.WindowStaysOnTopHint)
     window.setWindowTitle("Icon Extractor")
     window.setWindowIcon(QIcon('app/assets/icon.ico'))
- 
  
     window.resize(500, 500)
     layout = QVBoxLayout()
@@ -131,6 +131,96 @@ def main():
     layout.addWidget(icon_label)
     layout.addWidget(icon_label_desc)
     
+    # New: Label above the button group
+    size_label = QtWidgets.QLabel("Click a button to change icon size")
+    size_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+    opacity_effect2 = QGraphicsOpacityEffect()
+    opacity_effect2.setOpacity(0.5)
+    size_label.setGraphicsEffect(opacity_effect2)
+    size_label.setStyleSheet("font-size:13px; font-weight:500;font-family: 'Segoe UI';")
+    layout.addWidget(size_label)
+    # New: Create icon size selection buttons and group them
+    icon_size = 32  # default icon size
+    latest_process = None
+    latest_hwnd = None
+
+    # When creating the buttons, add a stylesheet so the :checked state stays visible.
+    button_layout = QtWidgets.QHBoxLayout()
+    # Center the buttons to avoid full-width stretching
+    button_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+    
+    btn16 = QtWidgets.QPushButton("16x16")
+    btn24 = QtWidgets.QPushButton("24x24")
+    btn32 = QtWidgets.QPushButton("32x32")
+    btn16.setCheckable(True)
+    btn24.setCheckable(True)
+    btn32.setCheckable(True)
+    # Set default to 32x32
+    btn32.setChecked(True)
+
+    # Set fixed width for each button to 40px and a fixed size policy
+    btn16.setFixedWidth(60)
+    btn16.setSizePolicy(QtWidgets.QSizePolicy(
+        QtWidgets.QSizePolicy.Policy.Fixed,
+        QtWidgets.QSizePolicy.Policy.Fixed))
+    btn24.setFixedWidth(60)
+    btn24.setSizePolicy(QtWidgets.QSizePolicy(
+        QtWidgets.QSizePolicy.Policy.Fixed,
+        QtWidgets.QSizePolicy.Policy.Fixed))
+    btn32.setFixedWidth(60)
+    btn32.setSizePolicy(QtWidgets.QSizePolicy(
+        QtWidgets.QSizePolicy.Policy.Fixed,
+        QtWidgets.QSizePolicy.Policy.Fixed))
+
+    # Set stylesheet so the checked button remains visibly blue even if unfocused.
+    style = """
+    QPushButton {
+        background-color: #4e4e4e;
+        color: white;
+        font-size: 13px;
+        font-family: 'Segoe UI';
+        border: none;
+        border-radius: 3px;
+        padding: 5px 10px;
+    }
+    QPushButton:hover {
+        background-color: #4cc2ff;
+        color: black;
+    }
+    QPushButton:pressed {
+        background-color: #3399FF;
+    }
+    QPushButton:checked, QPushButton:!active:checked {
+        background-color: #4cc2ff;
+        color: black;
+    }
+    """
+    btn16.setStyleSheet(style)
+    btn24.setStyleSheet(style)
+    btn32.setStyleSheet(style)
+
+    button_layout.addWidget(btn16)
+    button_layout.addWidget(btn24)
+    button_layout.addWidget(btn32)
+    layout.addLayout(button_layout)
+
+    button_group = QtWidgets.QButtonGroup(window)
+    button_group.setExclusive(True)
+    button_group.addButton(btn16)
+    button_group.addButton(btn24)
+    button_group.addButton(btn32)
+
+    def set_icon_size(new_size):
+        nonlocal icon_size, latest_process, latest_hwnd
+        icon_size = new_size
+        # Force reload icon regardless of foreground.
+        if latest_process and latest_hwnd:
+            update_label(latest_process, latest_hwnd, force_reload=True)
+
+    btn16.clicked.connect(lambda: set_icon_size(16))
+    btn24.clicked.connect(lambda: set_icon_size(24))
+    btn32.clicked.connect(lambda: set_icon_size(32))
+
     window.setLayout(layout)
     
     own_hwnd = int(window.winId())
@@ -173,14 +263,22 @@ def main():
             if file_path:
                 pixmap.save(file_path, "PNG")
 
-    def update_label(process_name, hwnd):
+    # Modify update_label to accept an optional force_reload parameter.
+    def update_label(process_name, hwnd, force_reload=False):
+        nonlocal latest_process, latest_hwnd
+        # Save latest active window info for reloads later.
+        latest_process = process_name
+        latest_hwnd = hwnd
+
         if hwnd == own_hwnd:
             return
         update_retry_count = 0
         try:
-            if hwnd != win32gui.GetForegroundWindow():
+            # Only check if window is foreground if not forcing a reload.
+            if not force_reload and hwnd != win32gui.GetForegroundWindow():
                 return
             if process_name:
+                dpi = window.screen().devicePixelRatio()
                 icon_img = get_window_icon(hwnd, 1)
                 if process_name == "ApplicationFrameHost.exe" and not icon_img:
                     if update_retry_count < 10:
@@ -189,7 +287,6 @@ def main():
                         return
                     else:
                         update_retry_count = 0
-                        
                 if icon_img:
                     window_title = win32gui.GetWindowText(hwnd)
                     if window_title in IGNORED_TITLES:
@@ -197,9 +294,11 @@ def main():
                     placeholder_label.hide()
                     name_label.setText(window_title if len(window_title) <= 50 else window_title[:50] + '...')
                     proccess_label.setText(process_name)
-                    icon_img = icon_img.resize((32, 32), Image.LANCZOS).convert("RGBA")
-                    qimage = QImage(icon_img.tobytes(), 32, 32, QImage.Format.Format_RGBA8888)
+                    # Use the nonlocal icon_size for resizing
+                    icon_img = icon_img.resize((icon_size, icon_size), Image.Resampling.LANCZOS).convert("RGBA")
+                    qimage = QImage(icon_img.tobytes(), icon_img.width, icon_img.height, QImage.Format.Format_RGBA8888)
                     pixmap = QPixmap.fromImage(qimage)
+                    pixmap.setDevicePixelRatio(dpi)
                     icon_label.setPixmap(pixmap)
                     icon_label_desc.show()
             else:
