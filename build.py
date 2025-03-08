@@ -1,6 +1,6 @@
 from cx_Freeze import setup, Executable
 import datetime
-BUILD_VERSION = "1.0.2"
+BUILD_VERSION = "1.0.3"
 build_options = {
     "silent_level": 1,
     "silent": True,

@@ -101,7 +101,7 @@ def main():
     placeholder_label.setStyleSheet("font-size:24px;font-weight:500;font-family: 'Segoe UI';")
     placeholder_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
     placeholder_label.setText("Waiting for active window...")
-        
+    
     name_label = QLabel()
     name_label.setStyleSheet("font-size:18px;font-weight:600;font-family: 'Segoe UI';")
     name_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -114,7 +114,8 @@ def main():
     icon_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
     icon_label.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
     icon_label.customContextMenuRequested.connect(lambda pos: show_context_menu(pos))
-    icon_label.setStyleSheet("margin-top: 10px; margin-bottom: 10px")
+    icon_label.setFixedSize(48, 48)
+ 
     
     icon_label_desc = QLabel()
     opacity_effect = QGraphicsOpacityEffect()
@@ -130,6 +131,7 @@ def main():
     layout.addWidget(proccess_label)
     layout.addWidget(icon_label)
     layout.addWidget(icon_label_desc)
+    layout.setAlignment(icon_label, QtCore.Qt.AlignmentFlag.AlignHCenter)
     
     # New: Label above the button group
     size_label = QtWidgets.QLabel("Click a button to change icon size")
@@ -146,6 +148,7 @@ def main():
 
     # When creating the buttons, add a stylesheet so the :checked state stays visible.
     button_layout = QtWidgets.QHBoxLayout()
+
     # Center the buttons to avoid full-width stretching
     button_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
     
@@ -175,20 +178,21 @@ def main():
     # Set stylesheet so the checked button remains visibly blue even if unfocused.
     style = """
     QPushButton {
-        background-color: #4e4e4e;
+        background-color: #414141;
         color: white;
         font-size: 13px;
         font-family: 'Segoe UI';
         border: none;
         border-radius: 3px;
         padding: 5px 10px;
+        margin-top: 10px;
     }
     QPushButton:hover {
-        background-color: #4cc2ff;
-        color: black;
+        background-color: #494949;
     }
     QPushButton:pressed {
-        background-color: #3399FF;
+        background-color: #6bcdff;
+        color: black;
     }
     QPushButton:checked, QPushButton:!active:checked {
         background-color: #4cc2ff;
@@ -209,7 +213,10 @@ def main():
     button_group.addButton(btn16)
     button_group.addButton(btn24)
     button_group.addButton(btn32)
-
+    btn16.hide()
+    btn24.hide()
+    btn32.hide()
+    size_label.hide()
     def set_icon_size(new_size):
         nonlocal icon_size, latest_process, latest_hwnd
         icon_size = new_size
@@ -235,8 +242,8 @@ def main():
             QMenu {
                 font-size: 12px;
                 font-family: 'Segoe UI';
-                background-color: #333;
-                border: 1px solid #333;
+                background-color: #414141;
+                border: 1px solid #414141;
                 outline: none;
             }
             QMenu::icon {
@@ -246,7 +253,7 @@ def main():
                 padding: 6px 12px;
             }
             QMenu::item:selected {
-                background-color: #444;
+                background-color: #555;
             }
         """)
         save_action = menu.addAction("Save as PNG")
@@ -279,7 +286,7 @@ def main():
                 return
             if process_name:
                 dpi = window.screen().devicePixelRatio()
-                icon_img = get_window_icon(hwnd, 1)
+                icon_img = get_window_icon(hwnd, 0)
                 if process_name == "ApplicationFrameHost.exe" and not icon_img:
                     if update_retry_count < 10:
                         update_retry_count += 1 
@@ -301,6 +308,10 @@ def main():
                     pixmap.setDevicePixelRatio(dpi)
                     icon_label.setPixmap(pixmap)
                     icon_label_desc.show()
+                    btn16.show()
+                    btn24.show()
+                    btn32.show()
+                    size_label.show()
             else:
                 name_label.setText("No active application")
         except Exception:
