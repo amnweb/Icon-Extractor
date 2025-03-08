@@ -26,8 +26,8 @@ jobs:
 
       - uses: vedantmgoyal9/winget-releaser@main
         with:
-          identifier: AmN.yasb
+          identifier: AmN.IconExtractor
           version: ${{ steps.get-version.outputs.version }}
           release-tag: ${{ steps.get-version.outputs.release-tag }}
           installers-regex: '\.msi$'
-          token: ${{ secrets.WINGET_TOKEN }}
+          token: ${{ secrets.PAT }}
